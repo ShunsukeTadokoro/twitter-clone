@@ -1,0 +1,204 @@
+{
+  "AWSEBDockerrunVersion": 2,
+  "volumes": [
+    {
+      "name": "play-start",
+      "host": {
+        "sourcePath": "/var/app/current/play/start.sh"
+      }
+    },
+    {
+      "name": "play-conf",
+      "host": {
+        "sourcePath": "/var/app/current/play/conf"
+      }
+    },
+    {
+      "name": "nginx-confd",
+      "host": {
+        "sourcePath": "/var/app/current/nginx/conf.d"
+      }
+    },
+    {
+      "name": "docker-sock",
+      "host": {
+        "sourcePath": "/var/run/docker.sock"
+      }
+    },
+    {
+      "name": "mackerel-agent-lib",
+      "host": {
+        "sourcePath": "/var/lib/mackerel-agent"
+      }
+    }
+  ],
+  "containerDefinitions": [
+    {
+      "name": "play",
+      "image": "docker-registry.daemontas.com/jse/staging/jse-yahoo-api:latest",
+      "entryPoint": [
+        "bin/start.sh"
+      ],
+      "essential": true,
+      "memory": 512,
+      "portMappings": [
+        {
+          "hostPort": 9000,
+          "containerPort": 9000
+        }
+      ],
+      "command": [
+        "-J-server",
+        "-J-Xms256M",
+        "-J-Xmx256M",
+        "-J-Xss256k",
+        "-J-XX:MaxMetaspaceSize=128M",
+        "-J-XX:CompressedClassSpaceSize=128M",
+        "-J-XX:NewSize=128M",
+        "-J-XX:MaxNewSize=128M",
+        "-J-verbose:gc",
+        "-J-Xloggc:/var/apps/play/logs/play_gc.log",
+        "-J-XX:+UseGCLogFileRotation",
+        "-J-XX:NumberOfGCLogFiles=10",
+        "-J-XX:GCLogFileSize=10M",
+        "-J-XX:+PrintGCDetails",
+        "-J-XX:+PrintGCTimeStamps",
+        "-J-XX:+PrintGCDateStamps",
+        "-J-XX:+HeapDumpOnOutOfMemoryError",
+        "-J-XX:HeapDumpPath=/var/apps/play/logs/play_heap_dump.hprof"
+      ],
+      "dockerLabels": {
+        "name": "play"
+      },
+      "mountPoints": [
+        {
+          "sourceVolume": "play-start",
+          "containerPath": "/opt/docker/bin/start.sh",
+          "readOnly": true
+        },
+        {
+          "sourceVolume": "play-conf",
+          "containerPath": "/var/apps/play/conf",
+          "readOnly": true
+        },
+        {
+          "sourceVolume": "awseb-logs-play",
+          "containerPath": "/var/apps/play/logs"
+        }
+      ],
+      "ulimits": [{
+        "softLimit": 65536,
+        "hardLimit": 65536,
+        "name": "nofile"
+      }]
+    },
+    {
+      "name": "nginx",
+      "image": "docker-registry.daemontas.com/infra/nginx-play:latest",
+      "essential": false,
+      "memory": 64,
+      "privileged": true,
+      "portMappings": [
+        {
+          "hostPort": 80,
+          "containerPort": 80
+        },
+        {
+          "hostPort": 18080,
+          "containerPort": 18080
+        },
+        {
+          "hostPort": 18443,
+          "containerPort": 18443
+        },
+        {
+          "hostPort": 18088,
+          "containerPort": 18088
+        }
+      ],
+      "links": [
+        "play"
+      ],
+      "dockerLabels": {
+        "name": "nginx"
+      },
+      "mountPoints": [
+        {
+          "sourceVolume": "nginx-confd",
+          "containerPath": "/etc/nginx/conf.d",
+          "readOnly": true
+        },
+        {
+          "sourceVolume": "awseb-logs-nginx",
+          "containerPath": "/var/log/nginx"
+        }
+      ]
+    },
+    {
+      "name": "fluentd",
+      "image": "docker-registry.daemontas.com/infra/td-agent-centos-play-base64-salc:latest",
+      "essential": false,
+      "memory": 256,
+      "environment": [
+        { "name": "CATEGORY", "value": "jse" },
+        { "name": "ROLE", "value": "yahoo-api" },
+        { "name": "FORWARDER", "value": "logforward.daemonby.internal" },
+        { "name": "S3BUCKET", "value": "dmt-logbackup" },
+        { "name": "NGINX_KINESIS_STREAM_NAME", "value": "dmt-infra-nginx" },
+        { "name": "APPLICATION_KINESIS_STREAM_NAME", "value": "dmt-infra-application" },
+        { "name": "SALC_KINESIS_STREAM_NAME", "value": "dmt-ds-salc"}
+      ],
+      "portMappings": [
+        {
+          "hostPort": 24224,
+          "containerPort": 24224
+        }
+      ],
+      "links": [
+      ],
+      "mountPoints": [
+        {
+          "sourceVolume": "awseb-logs-play",
+          "containerPath": "/var/apps/play/logs",
+          "readOnly": true
+        },
+        {
+          "sourceVolume": "awseb-logs-nginx",
+          "containerPath": "/var/log/nginx",
+          "readOnly": true
+        },
+        {
+          "sourceVolume": "awseb-logs-fluentd",
+          "containerPath": "/var/log/td-agent"
+        }
+      ]
+    },    {
+      "name": "mackerel-agent",
+      "image": "docker-registry.daemontas.com/infra/mackerel-agent-jvm",
+      "essential": false,
+      "environment":[
+        { "name": "JVM_PROCESS_NAME", "value": "play" },
+        { "name": "opts", "value": "-role=dmt-jse:yahoo-api" }
+      ],
+      "memory": 64,
+      "links": [
+        "nginx",
+        "play"
+      ],
+      "dockerLabels": {
+        "name": "mackerel-agent"
+      },
+      "mountPoints": [
+        {
+          "sourceVolume": "docker-sock",
+          "containerPath": "/var/run/docker.sock",
+          "readOnly": true
+        },
+        {
+          "sourceVolume": "mackerel-agent-lib",
+          "containerPath": "/var/lib/mackerel-agent"
+        }
+      ]
+    }
+  ]
+}

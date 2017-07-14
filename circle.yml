@@ -1,0 +1,23 @@
+general:
+  build_dir: twitter_clone
+  artifacts:
+    - target/rpm/RPMS/noarch
+
+machine:  
+  timezone: Asia/Tokyo
+  java:
+    version: oraclejdk8
+  post:
+    - sudo service postgresql stop
+
+dependencies:
+  pre:
+    - sudo apt-get install rpm
+  cache_directories:
+    - ~/.sbt/
+  override:
+    - sbt update
+
+test:
+  override:
+    - echo "sbt clean test"

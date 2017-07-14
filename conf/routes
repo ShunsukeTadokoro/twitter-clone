@@ -2,7 +2,7 @@
 # This file defines all application routes (Higher priority routes first)
 # ~~~~
 
-GET     /api/schema/_code/:code                         controllers.schema.SchemaResource._code(code)
+
 ###
 # summary: Store schema
 # description: Store schema
@@ -16,7 +16,6 @@ GET     /api/schema/_code/:code                         controllers.schema.Schem
 #   500:
 #     description: Unexpected error
 ###
-POST    /api/schema/_code/:code                         controllers.schema.SchemaResource._set(code)
 GET     /api/schema/_uuid/:uuid/_current                controllers.record.RecordResource._uuid(entity = "schema", uuid)
 GET     /api/schema/_uuid/:uuid                         controllers.record.RecordResource._uuid(entity = "schema", uuid)
 GET     /api/schema/_lookup                             controllers.record.RecordResource._lookup(entity = "schema", res_mode: Option[String], page: Int ?= 1, page_size: Int ?= 10, sort_fields: Option[String], sort_order: Option[String], query: Option[String])
@@ -93,15 +92,6 @@ GET     /message/query              controllers.AsyncController.query
 ### NoDocs ###
 # An example controller showing how to write asynchronous code
 GET     /message                    controllers.AsyncController.message
-
-###
-# summary: swagger definition
-# description: for swagger UI to consume
-###
-GET     /twitter-clone/api-docs/swagger.json      @controllers.swagger.ApiSpecs.specs
-
-### NoDocs ###
-GET     /twitter-clone/api-docs/swagger-ui/*file  controllers.Assets.at(path:String="/public/lib/swagger-ui", file:String)
 
 ### NoDocs ###
 # Map static resources from the /public folder to the /assets URL path

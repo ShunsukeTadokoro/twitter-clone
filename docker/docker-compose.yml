@@ -1,0 +1,34 @@
+version: '2'
+services:
+    mysql:
+        container_name: twitter_clone_mysql
+        image: mysql/mysql-server:5.7
+        ports:
+            - "3306:3306"
+        command: [
+        "mysqld",
+        "--character-set-server=utf8mb4",
+        "--lower_case_table_names=1",
+        "--sql_mode=TRADITIONAL",
+        "--explicit_defaults_for_timestamp=ON"
+        ]
+        environment:
+            MYSQL_ALLOW_EMPTY_PASSWORD: 1
+    s3proxy:
+        container_name: twitter_clone_s3proxy
+        build: s3proxy
+        ports:
+            - "9325:9325"
+        volumes:
+            - ./s3proxy/data:/opt/s3proxy/data
+    redis:
+        container_name: twitter_clone_redis
+        image: redis:3.0
+        ports: 
+            - "6379:6379"
+    elasticsearch:
+        container_name: twitter_clone_elasticsearch
+        image: elasticsearch:5.5.0
+        ports:
+            - "9200:9200"
+            - "9300:9300"
